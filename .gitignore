@@ -1,3 +1,6 @@
+# Migrator output
+migrator/migrated/
+
 .venv
 venv/
 .cache

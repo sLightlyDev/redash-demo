@@ -1,0 +1,85 @@
+x-redash-service: &redash-service
+  image: redash/redash:10.1.0.b50633
+  depends_on:
+    setup:
+      condition: service_completed_successfully
+  environment: &redash-env
+    REDASH_DATABASE_URL:    "postgresql://redash:redash_pass@postgres/redash"
+    REDASH_REDIS_URL:       "redis://redis:6379/0"
+    REDASH_SECRET_KEY:      "demo-secret-key-change-in-prod"
+    REDASH_COOKIE_SECRET:   "demo-cookie-secret"
+    REDASH_ENFORCE_PRIVATE_IP_BLOCK: "false"
+    PYTHONUNBUFFERED: "0"
+  restart: unless-stopped
+
+services:
+
+  # ── One-time setup: create Redash DB tables + admin user ──────────────────────
+  setup:
+    image: redash/redash:10.1.0.b50633
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *redash-env
+    volumes:
+      - ./setup/02_redash_init.sh:/setup.sh:ro
+    entrypoint: ["/bin/sh", "/setup.sh"]
+    restart: "no"
+
+  # ── Redash server ─────────────────────────────────────────────────────────────
+  server:
+    <<: *redash-service
+    command: server
+    ports:
+      - "5000:5000"
+    environment:
+      <<: *redash-env
+      REDASH_WEB_WORKERS: "2"
+      GUNICORN_CMD_ARGS:  "--limit-request-field_size=0 --limit-request-fields=200"
+
+  # ── Query worker ──────────────────────────────────────────────────────────────
+  worker:
+    <<: *redash-service
+    command: worker
+    environment:
+      <<: *redash-env
+      QUEUES:        "queries,scheduled_queries,schemas,celery"
+      WORKERS_COUNT: "2"
+
+  # ── Scheduler ─────────────────────────────────────────────────────────────────
+  scheduler:
+    <<: *redash-service
+    command: scheduler
+
+  # ── CSV file server — serves ./csv-data over HTTP inside Docker ───────────────
+  csvserver:
+    image: nginx:alpine
+    volumes:
+      - ./csv-data:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  # ── PostgreSQL — auto-seeds telemetry data on first run ──────────────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER:     redash
+      POSTGRES_PASSWORD: redash_pass
+      POSTGRES_DB:       redash
+    volumes:
+      - redash-postgres-data:/var/lib/postgresql/data
+      - ./setup/01_seed_telemetry.sql:/docker-entrypoint-initdb.d/01_seed_telemetry.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redash"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redash-postgres-data:
