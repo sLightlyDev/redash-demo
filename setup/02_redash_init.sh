@@ -4,7 +4,10 @@
 set -e
 
 echo "==> Waiting for postgres..."
-until pg_isready -h postgres -U redash; do sleep 2; done
+until python -c "import psycopg2; psycopg2.connect(host='postgres',user='redash',password='redash_pass',dbname='redash')" 2>/dev/null; do
+  echo "  postgres not ready, retrying..."
+  sleep 2
+done
 
 echo "==> Creating Redash DB tables..."
 /app/manage.py database create_tables
