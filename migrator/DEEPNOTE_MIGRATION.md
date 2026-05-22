@@ -89,17 +89,9 @@ explaining which Deepnote integration to set up, and reference it by name.
 ---
 
 ### 2. Plotly in Deepnote
-**Current:** `fig.show()` — works in Jupyter but Deepnote renders it differently.
-**Deepnote needs:** `fig` as the last line of the cell (no `.show()`) — Deepnote
-auto-renders the last expression.
-```python
-# Current (generic Jupyter):
-fig.show()
-
-# Should be (Deepnote):
-fig   # Deepnote renders last expression automatically
-```
-**Fix needed:** One-line change in `viz_to_code()` — swap `fig.show()` for `fig`.
+**Status: Fixed ✅**
+`fig.show()` replaced with `fig` (bare expression) throughout `viz_to_code()`.
+Deepnote auto-renders the last expression in a cell — no `.show()` needed.
 
 ---
 
@@ -135,15 +127,16 @@ by reading `columnMapping.series` instead of `seriesOptions`.
 ---
 
 ### 5. Counter Visualization
-**Current:** Prints to stdout with `print(f'...')`.
-**Deepnote needs:** A rendered number block. Deepnote doesn't have a native
-counter widget — best option is a styled HTML output:
+**Status: Fixed ✅**
+Counter now emits `IPython.display.HTML` with an inline-styled block instead of
+`print()`. Output looks like a KPI card — label on top, big bold number below.
 ```python
 from IPython.display import HTML
-HTML(f'<h1 style="font-size:48px; color:#333">{_val:,}</h1><p>Total Views</p>')
+HTML(f'<div style="font-family:sans-serif;padding:16px">
+  <p style="font-size:14px;color:#888;margin:0">Total en.wikipedia Pageviews</p>
+  <p style="font-size:48px;font-weight:bold;color:#333;margin:4px 0">11,800,000,000</p>
+</div>')
 ```
-**Fix needed:** Update `viz_to_code()` for COUNTER type to emit HTML display
-instead of print.
 
 ---
 
@@ -182,8 +175,8 @@ and optionally generate the CSV export code for the upstream notebook.
 
 | Query type | Auto-migrated? | Manual work needed |
 |---|---|---|
-| Simple SELECT → line/bar/pie | ✅ Yes | Change `fig.show()` → `fig` |
-| Counter | Partial | Replace `print` with `HTML()` |
+| Simple SELECT → line/bar/pie | ✅ Yes | None — `fig.show()` already fixed |
+| Counter | ✅ Yes | None — `HTML()` already emitted |
 | Parameterized query | ✅ Yes | None — variables work as-is |
 | QRDS | Stub only | Wire up upstream DataFrame manually |
 | Dashboard layout | JSON spec only | Recreate in Deepnote UI manually |
@@ -199,8 +192,8 @@ and optionally generate the CSV export code for the upstream notebook.
 
 ## Recommended Next Steps
 
-1. **Fix `fig.show()` → `fig`** in `migrator.py` — one line, unblocks all charts
-2. **Fix Counter** to emit `HTML()` — makes KPI widgets actually look right
+1. ~~**Fix `fig.show()` → `fig`**~~ ✅ Done
+2. ~~**Fix Counter to emit `HTML()`**~~ ✅ Done
 3. **Test in real Deepnote** — import one generated notebook, verify it runs end-to-end
 4. **Talk to Mozilla** — request a read-only STMO API key to run against a real 500-query instance
 5. **Build the Deepnote dashboard import** — this is the biggest missing piece for

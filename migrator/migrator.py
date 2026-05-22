@@ -116,8 +116,11 @@ def viz_to_code(viz: dict, df_var: str = "df") -> str:
         col = opts.get("counterColName") or (f"{df_var}.columns[0]")
         return (
             f"# Counter\n"
+            f"from IPython.display import HTML\n"
             f"_val = {df_var}['{col}'].iloc[0] if '{col}' in {df_var}.columns else {df_var}.iloc[0, 0]\n"
-            f"print(f'📊 {name}: {{_val:,}}')"
+            f"HTML(f'<div style=\"font-family:sans-serif;padding:16px\">"
+            f"<p style=\"font-size:14px;color:#888;margin:0\">{name}</p>"
+            f"<p style=\"font-size:48px;font-weight:bold;color:#333;margin:4px 0\">{{_val:,}}</p></div>')"
         )
 
     if vtype == "CHART":
@@ -135,22 +138,22 @@ def viz_to_code(viz: dict, df_var: str = "df") -> str:
 
         if series_type == "pie":
             if not x_col or not y_col:
-                return f"{imports}# pie — no column mapping found\npx.pie({df_var}).show()"
+                return f"{imports}# pie — no column mapping found\npx.pie({df_var})"
             return (
                 f"{imports}"
                 f"fig = px.pie({df_var}, names='{x_col}', values='{y_col}', title='{name}')\n"
-                f"fig.show()"
+                f"fig"
             )
 
         if series_type in ("line", "area"):
             px_type = "line" if series_type == "line" else "area"
             color   = f", color='{series_col}'" if series_col else ""
             if not x_col or not y_col:
-                return f"{imports}# {px_type} — no column mapping\npx.{px_type}({df_var}).show()"
+                return f"{imports}# {px_type} — no column mapping\npx.{px_type}({df_var})"
             return (
                 f"{imports}"
                 f"fig = px.{px_type}({df_var}, x='{x_col}', y='{y_col}'{color}, title='{name}')\n"
-                f"fig.show()"
+                f"fig"
             )
 
         if series_type in ("column", "bar"):
@@ -159,17 +162,17 @@ def viz_to_code(viz: dict, df_var: str = "df") -> str:
             orientation = "h" if series_type == "bar" else ""
             orient_arg  = ", orientation='h'" if orientation else ""
             if not x_col or not y_col:
-                return f"{imports}# bar — no column mapping\npx.bar({df_var}).show()"
+                return f"{imports}# bar — no column mapping\npx.bar({df_var})"
             if orientation:
                 return (
                     f"{imports}"
                     f"fig = px.bar({df_var}, x='{y_col}', y='{x_col}'{color}{orient_arg}, title='{name}')\n"
-                    f"fig.show()"
+                    f"fig"
                 )
             return (
                 f"{imports}"
                 f"fig = px.bar({df_var}, x='{x_col}', y='{y_col}'{color}, title='{name}')\n"
-                f"fig.show()"
+                f"fig"
             )
 
         if series_type == "scatter":
@@ -177,15 +180,15 @@ def viz_to_code(viz: dict, df_var: str = "df") -> str:
             y_s = y_cols[1] if len(y_cols) > 1 else (y_cols[0] if y_cols else None)
             color = f", color='{series_col}'" if series_col else ""
             if not x_s or not y_s:
-                return f"{imports}# scatter — need at least 2 y columns\npx.scatter({df_var}).show()"
+                return f"{imports}# scatter — need at least 2 y columns\npx.scatter({df_var})"
             return (
                 f"{imports}"
                 f"fig = px.scatter({df_var}, x='{x_s}', y='{y_s}'{color}, title='{name}')\n"
-                f"fig.show()"
+                f"fig"
             )
 
         # fallback
-        return f"{imports}px.line({df_var}, title='{name}').show()  # unknown series type: {series_type}"
+        return f"{imports}fig = px.line({df_var}, title='{name}')  # unknown series type: {series_type}\nfig"
 
     return f"# Unsupported viz type: {vtype}\n{df_var}"
 
