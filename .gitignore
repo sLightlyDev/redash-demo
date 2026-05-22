@@ -1,5 +1,9 @@
 # Migrator output
 migrator/migrated/
+migrator/deepnote_demo/
+
+# Claude Code internals
+.claude/
 
 .venv
 venv/
